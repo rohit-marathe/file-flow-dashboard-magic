@@ -18,6 +18,7 @@ interface CreateFolderModalProps {
   onClose: () => void;
   currentPath: string;
   ip: string;
+  pemFile: File;
   onSuccess: () => void;
 }
 
@@ -26,6 +27,7 @@ const CreateFolderModal = ({
   onClose,
   currentPath,
   ip,
+  pemFile,
   onSuccess,
 }: CreateFolderModalProps) => {
   const [folderName, setFolderName] = useState("");
@@ -44,7 +46,7 @@ const CreateFolderModal = ({
 
     setIsCreating(true);
     try {
-      await createFolder(ip, currentPath, folderName);
+      await createFolder(ip, currentPath, folderName, pemFile);
       toast({
         title: "Success",
         description: `Folder "${folderName}" created successfully`,

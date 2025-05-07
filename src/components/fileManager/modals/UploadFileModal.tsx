@@ -19,6 +19,7 @@ interface UploadFileModalProps {
   onClose: () => void;
   currentPath: string;
   ip: string;
+  pemFile: File;
   onSuccess: () => void;
 }
 
@@ -27,6 +28,7 @@ const UploadFileModal = ({
   onClose,
   currentPath,
   ip,
+  pemFile,
   onSuccess,
 }: UploadFileModalProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -52,7 +54,7 @@ const UploadFileModal = ({
 
     setIsUploading(true);
     try {
-      await uploadFile(ip, currentPath, selectedFile);
+      await uploadFile(ip, currentPath, selectedFile, pemFile);
       toast({
         title: "Success",
         description: `File "${selectedFile.name}" uploaded successfully`,

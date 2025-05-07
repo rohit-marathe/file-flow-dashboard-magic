@@ -10,7 +10,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { FileItem, deleteItem } from "@/services/fileService";
+import { deleteItem } from "@/services/fileService";
+import { FileItem } from "@/types/server";
 import { useToast } from "@/hooks/use-toast";
 
 interface DeleteConfirmModalProps {
@@ -18,6 +19,7 @@ interface DeleteConfirmModalProps {
   onClose: () => void;
   item: FileItem;
   ip: string;
+  pemFile: File;
   onSuccess: () => void;
 }
 
@@ -26,6 +28,7 @@ const DeleteConfirmModal = ({
   onClose,
   item,
   ip,
+  pemFile,
   onSuccess,
 }: DeleteConfirmModalProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -34,7 +37,7 @@ const DeleteConfirmModal = ({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteItem(ip, item.path);
+      await deleteItem(ip, item.path, pemFile);
       toast({
         title: "Success",
         description: `"${item.name}" deleted successfully`,

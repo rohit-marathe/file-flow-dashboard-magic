@@ -10,7 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileItem, renameItem } from "@/services/fileService";
+import { renameItem } from "@/services/fileService";
+import { FileItem } from "@/types/server";
 import { useToast } from "@/hooks/use-toast";
 
 interface RenameModalProps {
@@ -19,6 +20,7 @@ interface RenameModalProps {
   item: FileItem;
   currentPath: string;
   ip: string;
+  pemFile: File;
   onSuccess: () => void;
 }
 
@@ -28,6 +30,7 @@ const RenameModal = ({
   item,
   currentPath,
   ip,
+  pemFile,
   onSuccess,
 }: RenameModalProps) => {
   const [newName, setNewName] = useState("");
@@ -57,7 +60,7 @@ const RenameModal = ({
 
     setIsRenaming(true);
     try {
-      await renameItem(ip, currentPath, item.name, newName);
+      await renameItem(ip, currentPath, item.name, newName, pemFile);
       toast({
         title: "Success",
         description: `Successfully renamed "${item.name}" to "${newName}"`,

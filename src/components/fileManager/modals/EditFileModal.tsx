@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileItem, readFile, saveFile } from "@/services/fileService";
+import { readFile, saveFile } from "@/services/fileService";
+import { FileItem } from "@/types/server";
 import { useToast } from "@/hooks/use-toast";
 
 interface EditFileModalProps {
@@ -17,6 +18,7 @@ interface EditFileModalProps {
   onClose: () => void;
   item: FileItem;
   ip: string;
+  pemFile: File;
   onSuccess: () => void;
 }
 
@@ -25,6 +27,7 @@ const EditFileModal = ({
   onClose,
   item,
   ip,
+  pemFile,
   onSuccess,
 }: EditFileModalProps) => {
   const [content, setContent] = useState("");
@@ -42,7 +45,7 @@ const EditFileModal = ({
   const fetchFileContent = async () => {
     setIsLoading(true);
     try {
-      const fileContent = await readFile(ip, item.path);
+      const fileContent = await readFile(ip, item.path, pemFile);
       setContent(fileContent);
       setOriginalContent(fileContent);
     } catch (error) {
@@ -60,7 +63,7 @@ const EditFileModal = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await saveFile(ip, item.path, content);
+      await saveFile(ip, item.path, content, pemFile);
       toast({
         title: "Success",
         description: `File "${item.name}" saved successfully`,
