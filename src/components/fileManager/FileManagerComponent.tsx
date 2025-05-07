@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -15,7 +14,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileItem, Site, listFiles, getSites } from '@/services/fileService';
+import { FileItem, Site, ServerConnection } from '@/types/server';
+import { listFiles, getSites } from '@/services/fileService';
 import Breadcrumbs from './Breadcrumbs';
 import FilesTable from './FilesTable';
 import CreateFolderModal from './modals/CreateFolderModal';
@@ -23,11 +23,16 @@ import UploadFileModal from './modals/UploadFileModal';
 import EditFileModal from './modals/EditFileModal';
 import RenameModal from './modals/RenameModal';
 import DeleteConfirmModal from './modals/DeleteConfirmModal';
+import { toast } from 'sonner';
 
-const FileManagerComponent = () => {
+interface FileManagerComponentProps {
+  serverConnection: ServerConnection;
+}
+
+const FileManagerComponent = ({ serverConnection }: FileManagerComponentProps) => {
   const [sites, setSites] = useState<Site[]>([]);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
-  const [currentPath, setCurrentPath] = useState('/var/www/');
+  const [currentPath, setCurrentPath] = useState(serverConnection.path);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FileItem | null>(null);
@@ -39,28 +44,18 @@ const FileManagerComponent = () => {
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const { toast } = useToast();
+  const { toast: useToastFn } = useToast();
 
   useEffect(() => {
-    // Fetch sites on component mount
-    const fetchSites = async () => {
-      try {
-        const sitesData = await getSites();
-        setSites(sitesData);
-        if (sitesData.length > 0) {
-          setSelectedSite(sitesData[0]);
-        }
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch sites. Please try again.",
-          variant: "destructive",
-        });
-      }
+    // Instead of fetching sites, create one from the server connection
+    const siteFromConnection: Site = {
+      domain: `Server (${serverConnection.ip})`,
+      ip: serverConnection.ip
     };
-
-    fetchSites();
-  }, []);
+    
+    setSites([siteFromConnection]);
+    setSelectedSite(siteFromConnection);
+  }, [serverConnection]);
 
   useEffect(() => {
     // Fetch files whenever selectedSite or currentPath changes
@@ -74,14 +69,12 @@ const FileManagerComponent = () => {
 
     setLoading(true);
     try {
+      // We would need to modify this to include the PEM file
+      // For now, we'll just use the IP and path
       const filesData = await listFiles(selectedSite.ip, currentPath);
       setFiles(filesData);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch files. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to fetch files. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -152,18 +145,10 @@ const FileManagerComponent = () => {
           <h1 className="text-3xl font-bold">File Manager</h1>
           
           <div className="flex flex-col md:flex-row items-start md:items-center gap-2">
-            <Select onValueChange={handleSiteChange}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder={selectedSite?.domain || "Select a site"} />
-              </SelectTrigger>
-              <SelectContent>
-                {sites.map((site) => (
-                  <SelectItem key={site.domain} value={site.domain}>
-                    {site.domain}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Connected to:</span>
+              <span className="text-sm text-muted-foreground">{serverConnection.ip}</span>
+            </div>
           </div>
         </div>
 

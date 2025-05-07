@@ -1,18 +1,29 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import FileManagerComponent from '@/components/fileManager/FileManagerComponent';
+import ServerConnectionForm from '@/components/fileManager/ServerConnectionForm';
+import { ServerConnection } from '@/types/server';
 
 const FileManager = () => {
   const location = useLocation();
+  const [serverConnection, setServerConnection] = useState<ServerConnection | null>(null);
+
+  const handleConnect = (connectionDetails: ServerConnection) => {
+    setServerConnection(connectionDetails);
+  };
 
   return (
     <div className="flex h-screen bg-background">
       <Sidebar activePath={location.pathname} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-x-auto overflow-y-auto">
-          <FileManagerComponent />
+          {!serverConnection ? (
+            <ServerConnectionForm onConnect={handleConnect} />
+          ) : (
+            <FileManagerComponent serverConnection={serverConnection} />
+          )}
         </main>
       </div>
     </div>
