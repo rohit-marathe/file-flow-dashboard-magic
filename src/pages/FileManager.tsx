@@ -11,7 +11,12 @@ const FileManager = () => {
   const [serverConnection, setServerConnection] = useState<ServerConnection | null>(null);
 
   const handleConnect = (connectionDetails: ServerConnection) => {
+    console.log("Connecting with details:", connectionDetails);
     setServerConnection(connectionDetails);
+  };
+
+  const handleDisconnect = () => {
+    setServerConnection(null);
   };
 
   return (
@@ -22,7 +27,10 @@ const FileManager = () => {
           {!serverConnection ? (
             <ServerConnectionForm onConnect={handleConnect} />
           ) : (
-            <FileManagerComponent serverConnection={serverConnection} />
+            <FileManagerComponent 
+              serverConnection={serverConnection} 
+              onDisconnect={handleDisconnect}
+            />
           )}
         </main>
       </div>

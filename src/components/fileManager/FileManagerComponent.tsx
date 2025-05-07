@@ -1,7 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { useToast } from '@/hooks/use-toast';
 import { 
-  ChevronRight, 
   Folder, 
   FileText, 
   Upload, 
@@ -9,13 +8,13 @@ import {
   Edit, 
   Trash2, 
   RefreshCw,
-  ArrowLeft
+  ArrowLeft,
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileItem, Site, ServerConnection } from '@/types/server';
-import { listFiles, getSites } from '@/services/fileService';
+import { FileItem, ServerConnection } from '@/types/server';
+import { listFiles } from '@/services/fileService';
 import Breadcrumbs from './Breadcrumbs';
 import FilesTable from './FilesTable';
 import CreateFolderModal from './modals/CreateFolderModal';
@@ -27,11 +26,10 @@ import { toast } from 'sonner';
 
 interface FileManagerComponentProps {
   serverConnection: ServerConnection;
+  onDisconnect: () => void;
 }
 
-const FileManagerComponent = ({ serverConnection }: FileManagerComponentProps) => {
-  const [sites, setSites] = useState<Site[]>([]);
-  const [selectedSite, setSelectedSite] = useState<Site | null>(null);
+const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerComponentProps) => {
   const [currentPath, setCurrentPath] = useState(serverConnection.path);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,47 +42,22 @@ const FileManagerComponent = ({ serverConnection }: FileManagerComponentProps) =
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const { toast: useToastFn } = useToast();
-
   useEffect(() => {
-    // Instead of fetching sites, create one from the server connection
-    const siteFromConnection: Site = {
-      domain: `Server (${serverConnection.ip})`,
-      ip: serverConnection.ip
-    };
-    
-    setSites([siteFromConnection]);
-    setSelectedSite(siteFromConnection);
-  }, [serverConnection]);
-
-  useEffect(() => {
-    // Fetch files whenever selectedSite or currentPath changes
-    if (selectedSite) {
-      fetchFiles();
-    }
-  }, [selectedSite, currentPath]);
+    // Fetch files when the component mounts or currentPath changes
+    fetchFiles();
+  }, [currentPath]);
 
   const fetchFiles = async () => {
-    if (!selectedSite) return;
-
     setLoading(true);
     try {
-      // We would need to modify this to include the PEM file
-      // For now, we'll just use the IP and path
-      const filesData = await listFiles(selectedSite.ip, currentPath);
+      console.log("Fetching files for:", serverConnection.ip, currentPath);
+      const filesData = await listFiles(serverConnection.ip, currentPath, serverConnection.pemFile);
       setFiles(filesData);
     } catch (error) {
+      console.error("Error fetching files:", error);
       toast.error("Failed to fetch files. Please try again.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSiteChange = (value: string) => {
-    const site = sites.find((s) => s.domain === value);
-    if (site) {
-      setSelectedSite(site);
-      setCurrentPath('/var/www/');
     }
   };
 
@@ -144,11 +117,15 @@ const FileManagerComponent = ({ serverConnection }: FileManagerComponentProps) =
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <h1 className="text-3xl font-bold">File Manager</h1>
           
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-2">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Connected to:</span>
               <span className="text-sm text-muted-foreground">{serverConnection.ip}</span>
             </div>
+            <Button variant="outline" size="sm" onClick={onDisconnect}>
+              <LogOut className="h-4 w-4 mr-1" />
+              Disconnect
+            </Button>
           </div>
         </div>
 
@@ -216,7 +193,8 @@ const FileManagerComponent = ({ serverConnection }: FileManagerComponentProps) =
         isOpen={isCreateFolderModalOpen}
         onClose={() => setIsCreateFolderModalOpen(false)}
         currentPath={currentPath}
-        ip={selectedSite?.ip || ''}
+        ip={serverConnection.ip}
+        pemFile={serverConnection.pemFile}
         onSuccess={fetchFiles}
       />
 
@@ -224,7 +202,8 @@ const FileManagerComponent = ({ serverConnection }: FileManagerComponentProps) =
         isOpen={isUploadFileModalOpen}
         onClose={() => setIsUploadFileModalOpen(false)}
         currentPath={currentPath}
-        ip={selectedSite?.ip || ''}
+        ip={serverConnection.ip}
+        pemFile={serverConnection.pemFile}
         onSuccess={fetchFiles}
       />
 
@@ -234,7 +213,8 @@ const FileManagerComponent = ({ serverConnection }: FileManagerComponentProps) =
             isOpen={isEditFileModalOpen}
             onClose={() => setIsEditFileModalOpen(false)}
             item={selectedItem}
-            ip={selectedSite?.ip || ''}
+            ip={serverConnection.ip}
+            pemFile={serverConnection.pemFile}
             onSuccess={fetchFiles}
           />
 
@@ -243,7 +223,8 @@ const FileManagerComponent = ({ serverConnection }: FileManagerComponentProps) =
             onClose={() => setIsRenameModalOpen(false)}
             item={selectedItem}
             currentPath={currentPath}
-            ip={selectedSite?.ip || ''}
+            ip={serverConnection.ip}
+            pemFile={serverConnection.pemFile}
             onSuccess={fetchFiles}
           />
 
@@ -251,7 +232,8 @@ const FileManagerComponent = ({ serverConnection }: FileManagerComponentProps) =
             isOpen={isDeleteModalOpen}
             onClose={() => setIsDeleteModalOpen(false)}
             item={selectedItem}
-            ip={selectedSite?.ip || ''}
+            ip={serverConnection.ip}
+            pemFile={serverConnection.pemFile}
             onSuccess={fetchFiles}
           />
         </>

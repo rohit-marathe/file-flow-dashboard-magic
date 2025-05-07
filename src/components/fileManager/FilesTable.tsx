@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2, FileText, Folder } from "lucide-react";
-import { FileItem } from "@/services/fileService";
+import { FileItem } from "@/types/server";
 import { formatBytes } from "@/lib/formatters";
 
 interface FilesTableProps {
