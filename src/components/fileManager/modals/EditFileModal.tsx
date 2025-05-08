@@ -48,6 +48,7 @@ const EditFileModal = ({
       setContent(fileContent);
       setOriginalContent(fileContent);
     } catch (error) {
+      console.error("Error reading file:", error);
       toast.error("Failed to read file content");
       onClose();
     } finally {
@@ -58,21 +59,34 @@ const EditFileModal = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      console.log(`Saving file "${item.name}"`);
       await saveFile(ip, item.path, content, pemFile);
+      setOriginalContent(content); // Update original content
       toast.success(`File "${item.name}" saved successfully`);
-      onSuccess();
-      onClose();
+      onSuccess(); // Refresh the file list
     } catch (error) {
+      console.error("Error saving file:", error);
       toast.error("Failed to save file. Please try again.");
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleClose = () => {
+    // Check if there are unsaved changes
+    if (content !== originalContent) {
+      if (confirm("You have unsaved changes. Are you sure you want to close?")) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
+
   const hasChanges = content !== originalContent;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-4xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit File: {item?.name}</DialogTitle>
@@ -91,7 +105,7 @@ const EditFileModal = ({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={isSaving || !hasChanges}>

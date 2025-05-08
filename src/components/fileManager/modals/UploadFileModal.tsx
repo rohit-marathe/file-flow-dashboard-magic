@@ -49,21 +49,32 @@ const UploadFileModal = ({
 
     setIsUploading(true);
     try {
+      console.log(`Uploading "${selectedFile.name}" to "${currentPath}"`);
       await uploadFile(ip, currentPath, selectedFile, pemFile);
       toast.success(`File "${selectedFile.name}" uploaded successfully`);
-      onSuccess();
+      onSuccess(); // Refresh the file list
       onClose();
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error) {
+      console.error("Upload error:", error);
       toast.error("Failed to upload file. Please try again.");
     } finally {
       setIsUploading(false);
     }
   };
 
+  // Reset the form when modal closes
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setSelectedFile(null);
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Upload File</DialogTitle>
@@ -88,7 +99,7 @@ const UploadFileModal = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleUpload} disabled={isUploading}>
+          <Button onClick={handleUpload} disabled={isUploading || !selectedFile}>
             {isUploading ? (
               "Uploading..."
             ) : (

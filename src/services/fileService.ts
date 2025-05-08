@@ -1,8 +1,97 @@
 
 import { FileItem, Site, ServerConnection } from '@/types/server';
-import axios from 'axios';
 
 const API_BASE_URL = '/api';
+
+// Global cache to simulate persistent server state during a session
+let mockFileSystem = {
+  '/var/www/': [
+    {
+      name: 'html',
+      type: 'directory' as const,
+      size: 0,
+      modified: new Date().toISOString(),
+      path: `/var/www/html`
+    },
+    {
+      name: 'cgi-bin',
+      type: 'directory' as const,
+      size: 0,
+      modified: new Date().toISOString(),
+      path: `/var/www/cgi-bin`
+    }
+  ],
+  '/var/www/html': [
+    {
+      name: 'wp.zyntr.com',
+      type: 'directory' as const,
+      size: 0,
+      modified: new Date().toISOString(),
+      path: `/var/www/html/wp.zyntr.com`
+    },
+    {
+      name: 'index.html',
+      type: 'file' as const,
+      size: 1024,
+      modified: new Date().toISOString(),
+      path: `/var/www/html/index.html`
+    },
+    {
+      name: 'favicon.ico',
+      type: 'file' as const,
+      size: 4096,
+      modified: new Date().toISOString(),
+      path: `/var/www/html/favicon.ico`
+    }
+  ],
+  '/var/www/html/wp.zyntr.com': [
+    {
+      name: 'wp-admin',
+      type: 'directory' as const,
+      size: 0,
+      modified: new Date().toISOString(),
+      path: `/var/www/html/wp.zyntr.com/wp-admin`
+    },
+    {
+      name: 'wp-content',
+      type: 'directory' as const,
+      size: 0,
+      modified: new Date().toISOString(),
+      path: `/var/www/html/wp.zyntr.com/wp-content`
+    },
+    {
+      name: 'wp-includes',
+      type: 'directory' as const,
+      size: 0,
+      modified: new Date().toISOString(),
+      path: `/var/www/html/wp.zyntr.com/wp-includes`
+    },
+    {
+      name: 'index.php',
+      type: 'file' as const,
+      size: 418,
+      modified: new Date().toISOString(),
+      path: `/var/www/html/wp.zyntr.com/index.php`
+    },
+    {
+      name: 'wp-config.php',
+      type: 'file' as const,
+      size: 2853,
+      modified: new Date().toISOString(),
+      path: `/var/www/html/wp.zyntr.com/wp-config.php`
+    },
+    {
+      name: '.htaccess',
+      type: 'file' as const,
+      size: 246,
+      modified: new Date().toISOString(),
+      path: `/var/www/html/wp.zyntr.com/.htaccess`
+    }
+  ],
+};
+
+// File content cache
+const fileContentCache: Record<string, string> = {};
 
 // Get list of sites/domains
 export const getSites = async (): Promise<Site[]> => {
@@ -23,132 +112,20 @@ export const listFiles = async (ip: string, path: string, pemFile?: File): Promi
   try {
     console.log("Fetching files from server:", ip, path);
     
-    // For production, we would make an actual API call here
-    // But since we don't have a backend API ready yet, we're adding
-    // some realistic mock data with a delay to simulate real API call
-    
+    // Simulated delay to mimic network request
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Create more realistic file listings based on the path
-    let filesData: FileItem[] = [];
+    // Normalize path to ensure it works as a key
+    const normalizedPath = path.endsWith('/') && path !== '/' ? path.slice(0, -1) : path;
     
-    if (path.includes('wp.zyntr.com')) {
-      // WordPress site structure
-      filesData = [
-        {
-          name: 'wp-admin',
-          type: 'directory',
-          size: 0,
-          modified: new Date().toISOString(),
-          path: `${path}/wp-admin`
-        },
-        {
-          name: 'wp-content',
-          type: 'directory',
-          size: 0,
-          modified: new Date().toISOString(),
-          path: `${path}/wp-content`
-        },
-        {
-          name: 'wp-includes',
-          type: 'directory',
-          size: 0,
-          modified: new Date().toISOString(),
-          path: `${path}/wp-includes`
-        },
-        {
-          name: 'index.php',
-          type: 'file',
-          size: 418,
-          modified: new Date().toISOString(),
-          path: `${path}/index.php`
-        },
-        {
-          name: 'wp-config.php',
-          type: 'file',
-          size: 2853,
-          modified: new Date().toISOString(),
-          path: `${path}/wp-config.php`
-        },
-        {
-          name: '.htaccess',
-          type: 'file',
-          size: 246,
-          modified: new Date().toISOString(),
-          path: `${path}/.htaccess`
-        }
-      ];
-    } else if (path.includes('/var/www/html')) {
-      // Common web server root structure
-      filesData = [
-        {
-          name: 'wp.zyntr.com',
-          type: 'directory',
-          size: 0,
-          modified: new Date().toISOString(),
-          path: `${path}/wp.zyntr.com`
-        },
-        {
-          name: 'index.html',
-          type: 'file',
-          size: 1024,
-          modified: new Date().toISOString(),
-          path: `${path}/index.html`
-        },
-        {
-          name: 'favicon.ico',
-          type: 'file',
-          size: 4096,
-          modified: new Date().toISOString(),
-          path: `${path}/favicon.ico`
-        }
-      ];
-    } else if (path === '/var/www/') {
-      // Top level directory
-      filesData = [
-        {
-          name: 'html',
-          type: 'directory',
-          size: 0,
-          modified: new Date().toISOString(),
-          path: `/var/www/html`
-        },
-        {
-          name: 'cgi-bin',
-          type: 'directory',
-          size: 0,
-          modified: new Date().toISOString(),
-          path: `/var/www/cgi-bin`
-        }
-      ];
-    } else {
-      // Default generic files
-      filesData = [
-        {
-          name: 'README.md',
-          type: 'file',
-          size: 1024,
-          modified: new Date().toISOString(),
-          path: `${path}/README.md`
-        },
-        {
-          name: 'config',
-          type: 'directory',
-          size: 0,
-          modified: new Date().toISOString(),
-          path: `${path}/config`
-        },
-        {
-          name: 'logs',
-          type: 'directory',
-          size: 0,
-          modified: new Date().toISOString(),
-          path: `${path}/logs`
-        }
-      ];
+    // Return cached files if we have them
+    if (mockFileSystem[normalizedPath]) {
+      return [...mockFileSystem[normalizedPath]];
     }
     
-    return filesData;
+    // If path doesn't exist in our mock system, create an empty directory
+    mockFileSystem[normalizedPath] = [];
+    return [];
   } catch (error) {
     console.error('Error listing files:', error);
     throw error;
@@ -159,11 +136,42 @@ export const listFiles = async (ip: string, path: string, pemFile?: File): Promi
 export const createFolder = async (ip: string, path: string, folderName: string, pemFile?: File): Promise<void> => {
   try {
     console.log(`Creating folder: ${folderName} at ${path} on ${ip}`);
-    // In a real implementation, this would call an API to create the folder
-    // For now, we'll simulate with a delay
+    
+    // Simulated delay to mimic network request
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // In production, this would be an API call that creates a folder on the server
+    // Normalize path
+    const normalizedPath = path.endsWith('/') && path !== '/' ? path.slice(0, -1) : path;
+    
+    // Ensure the path exists in our mock system
+    if (!mockFileSystem[normalizedPath]) {
+      mockFileSystem[normalizedPath] = [];
+    }
+    
+    // Create the new folder path
+    const newFolderPath = `${normalizedPath}/${folderName}`;
+    
+    // Check if folder already exists
+    const exists = mockFileSystem[normalizedPath].some(item => 
+      item.name === folderName && item.type === 'directory'
+    );
+    
+    if (exists) {
+      throw new Error('Folder already exists');
+    }
+    
+    // Add the new folder to the current directory
+    mockFileSystem[normalizedPath].push({
+      name: folderName,
+      type: 'directory',
+      size: 0,
+      modified: new Date().toISOString(),
+      path: newFolderPath
+    });
+    
+    // Initialize the new folder with empty contents
+    mockFileSystem[newFolderPath] = [];
+    
     console.log('Folder created successfully');
     return Promise.resolve();
   } catch (error) {
@@ -176,11 +184,51 @@ export const createFolder = async (ip: string, path: string, folderName: string,
 export const uploadFile = async (ip: string, path: string, file: File, pemFile?: File): Promise<void> => {
   try {
     console.log(`Uploading file: ${file.name} to ${path} on ${ip}`);
-    // In a real implementation, this would upload the file to the server
-    // For now, we'll simulate with a delay
+    
+    // Simulated delay proportional to file size
     await new Promise(resolve => setTimeout(resolve, file.size > 1000000 ? 3000 : 1000));
     
-    // In production, this would be an API call that uploads a file to the server
+    // Normalize path
+    const normalizedPath = path.endsWith('/') && path !== '/' ? path.slice(0, -1) : path;
+    
+    // Ensure the path exists in our mock system
+    if (!mockFileSystem[normalizedPath]) {
+      mockFileSystem[normalizedPath] = [];
+    }
+    
+    // Check if file already exists
+    const existingIndex = mockFileSystem[normalizedPath].findIndex(item => 
+      item.name === file.name && item.type === 'file'
+    );
+    
+    const newFilePath = `${normalizedPath}/${file.name}`;
+    
+    // Update or add the file
+    const newFile = {
+      name: file.name,
+      type: 'file' as const,
+      size: file.size,
+      modified: new Date().toISOString(),
+      path: newFilePath
+    };
+    
+    if (existingIndex >= 0) {
+      mockFileSystem[normalizedPath][existingIndex] = newFile;
+    } else {
+      mockFileSystem[normalizedPath].push(newFile);
+    }
+    
+    // Update file content if text file
+    if (file.type.includes('text') || ['.txt', '.md', '.js', '.html', '.css', '.php', '.json'].some(ext => file.name.endsWith(ext))) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          fileContentCache[newFilePath] = e.target.result as string;
+        }
+      };
+      reader.readAsText(file);
+    }
+    
     console.log('File uploaded successfully');
     return Promise.resolve();
   } catch (error) {
@@ -193,11 +241,55 @@ export const uploadFile = async (ip: string, path: string, file: File, pemFile?:
 export const renameItem = async (ip: string, path: string, oldName: string, newName: string, pemFile?: File): Promise<void> => {
   try {
     console.log(`Renaming: ${oldName} to ${newName} at ${path} on ${ip}`);
-    // In a real implementation, this would rename the file or folder on the server
-    // For now, we'll simulate with a delay
+    
+    // Simulated delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // In production, this would be an API call that renames a file or folder on the server
+    // Normalize path
+    const normalizedPath = path.endsWith('/') && path !== '/' ? path.slice(0, -1) : path;
+    
+    // Ensure the path exists in our mock system
+    if (!mockFileSystem[normalizedPath]) {
+      throw new Error('Directory not found');
+    }
+    
+    // Find the item to rename
+    const itemIndex = mockFileSystem[normalizedPath].findIndex(item => item.name === oldName);
+    
+    if (itemIndex < 0) {
+      throw new Error('Item not found');
+    }
+    
+    const item = mockFileSystem[normalizedPath][itemIndex];
+    const oldItemPath = item.path;
+    const newItemPath = `${normalizedPath}/${newName}`;
+    
+    // Update the item with the new name and path
+    mockFileSystem[normalizedPath][itemIndex] = {
+      ...item,
+      name: newName,
+      path: newItemPath,
+      modified: new Date().toISOString()
+    };
+    
+    // If it's a directory, update the mock file system keys
+    if (item.type === 'directory') {
+      // Create new key with the renamed directory
+      mockFileSystem[newItemPath] = mockFileSystem[oldItemPath] || [];
+      
+      // Delete old key
+      delete mockFileSystem[oldItemPath];
+      
+      // Update paths of all items inside the directory (recursive function would be needed for subdirectories)
+      mockFileSystem[newItemPath].forEach(subItem => {
+        subItem.path = subItem.path.replace(oldItemPath, newItemPath);
+      });
+    } else if (item.type === 'file' && fileContentCache[oldItemPath]) {
+      // Update file content cache for renamed files
+      fileContentCache[newItemPath] = fileContentCache[oldItemPath];
+      delete fileContentCache[oldItemPath];
+    }
+    
     console.log('Item renamed successfully');
     return Promise.resolve();
   } catch (error) {
@@ -210,11 +302,43 @@ export const renameItem = async (ip: string, path: string, oldName: string, newN
 export const deleteItem = async (ip: string, path: string, pemFile?: File): Promise<void> => {
   try {
     console.log(`Deleting: ${path} on ${ip}`);
-    // In a real implementation, this would delete the file or folder on the server
-    // For now, we'll simulate with a delay
+    
+    // Simulated delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // In production, this would be an API call that deletes a file or folder on the server
+    // Get parent directory path and item name
+    const pathParts = path.split('/').filter(Boolean);
+    const itemName = pathParts.pop() || '';
+    const parentPath = '/' + pathParts.join('/');
+    
+    // Ensure the parent path exists in our mock system
+    if (!mockFileSystem[parentPath]) {
+      throw new Error('Parent directory not found');
+    }
+    
+    // Find the item to delete
+    const itemIndex = mockFileSystem[parentPath].findIndex(item => item.name === itemName);
+    
+    if (itemIndex < 0) {
+      throw new Error('Item not found');
+    }
+    
+    const item = mockFileSystem[parentPath][itemIndex];
+    
+    // Remove the item from the parent directory
+    mockFileSystem[parentPath].splice(itemIndex, 1);
+    
+    // If it's a directory, clean up the mock file system
+    if (item.type === 'directory') {
+      // This is simplified - a real implementation would recursively delete subdirectories
+      delete mockFileSystem[path];
+    }
+    
+    // Remove from file content cache if it's a file
+    if (item.type === 'file') {
+      delete fileContentCache[path];
+    }
+    
     console.log('Item deleted successfully');
     return Promise.resolve();
   } catch (error) {
@@ -227,9 +351,14 @@ export const deleteItem = async (ip: string, path: string, pemFile?: File): Prom
 export const readFile = async (ip: string, path: string, pemFile?: File): Promise<string> => {
   try {
     console.log(`Reading file: ${path} on ${ip}`);
-    // In a real implementation, this would get the file content from the server
-    // For now, we'll simulate with a delay
+    
+    // Simulated delay
     await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Check if we have cached content for this file
+    if (fileContentCache[path]) {
+      return fileContentCache[path];
+    }
     
     // Generate mock content based on file extension
     const ext = path.split('.').pop()?.toLowerCase();
@@ -402,6 +531,9 @@ File path: ${path}
 Server IP: ${ip}`;
     }
     
+    // Store the content in cache
+    fileContentCache[path] = content;
+    
     return content;
   } catch (error) {
     console.error('Error reading file:', error);
@@ -413,11 +545,40 @@ Server IP: ${ip}`;
 export const saveFile = async (ip: string, path: string, content: string, pemFile?: File): Promise<void> => {
   try {
     console.log(`Saving file: ${path} on ${ip} with content length: ${content.length}`);
-    // In a real implementation, this would save the file content to the server
-    // For now, we'll simulate with a delay proportional to content size
+    
+    // Simulated delay proportional to content size
     await new Promise(resolve => setTimeout(resolve, content.length > 10000 ? 2000 : 1000));
     
-    // In production, this would be an API call that saves file content to the server
+    // Update the file content in cache
+    fileContentCache[path] = content;
+    
+    // Ensure the file exists in our mock file system
+    // Get parent directory path and item name
+    const pathParts = path.split('/').filter(Boolean);
+    const fileName = pathParts.pop() || '';
+    const parentPath = '/' + pathParts.join('/');
+    
+    // Check if file exists in parent directory
+    if (mockFileSystem[parentPath]) {
+      const fileIndex = mockFileSystem[parentPath].findIndex(item => 
+        item.name === fileName && item.type === 'file'
+      );
+      
+      if (fileIndex >= 0) {
+        // Update the file's modified date
+        mockFileSystem[parentPath][fileIndex].modified = new Date().toISOString();
+      } else {
+        // Add the file if it doesn't exist
+        mockFileSystem[parentPath].push({
+          name: fileName,
+          type: 'file',
+          size: content.length,
+          modified: new Date().toISOString(),
+          path: path
+        });
+      }
+    }
+    
     console.log('File saved successfully');
     return Promise.resolve();
   } catch (error) {

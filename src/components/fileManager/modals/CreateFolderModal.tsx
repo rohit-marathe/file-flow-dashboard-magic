@@ -41,20 +41,30 @@ const CreateFolderModal = ({
 
     setIsCreating(true);
     try {
-      await createFolder(ip, currentPath, folderName, pemFile);
+      console.log(`Creating folder "${folderName}" at path "${currentPath}"`);
+      await createFolder(ip, currentPath, folderName.trim(), pemFile);
       toast.success(`Folder "${folderName}" created successfully`);
-      onSuccess();
+      onSuccess(); // This will refresh the file list
       onClose();
       setFolderName("");
     } catch (error) {
+      console.error("Folder creation error:", error);
       toast.error("Failed to create folder. Please try again.");
     } finally {
       setIsCreating(false);
     }
   };
 
+  // Reset the form when modal opens
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setFolderName("");
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create New Folder</DialogTitle>
@@ -71,6 +81,11 @@ const CreateFolderModal = ({
               className="col-span-3"
               autoFocus
               placeholder="Enter folder name"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleCreate();
+                }
+              }}
             />
           </div>
         </div>
@@ -78,7 +93,7 @@ const CreateFolderModal = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleCreate} disabled={isCreating}>
+          <Button onClick={handleCreate} disabled={isCreating || !folderName.trim()}>
             {isCreating ? "Creating..." : "Create Folder"}
           </Button>
         </DialogFooter>

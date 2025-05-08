@@ -33,13 +33,17 @@ const DeleteConfirmModal = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
+    if (!item) return;
+    
     setIsDeleting(true);
     try {
+      console.log(`Deleting ${item.type}: ${item.path}`);
       await deleteItem(ip, item.path, pemFile);
       toast.success(`${item.type === 'directory' ? 'Folder' : 'File'} "${item.name}" deleted successfully`);
-      onSuccess();
+      onSuccess(); // This will refresh the file list
       onClose();
     } catch (error) {
+      console.error("Delete error:", error);
       toast.error(`Failed to delete ${item.type === 'directory' ? 'folder' : 'file'}. Please try again.`);
     } finally {
       setIsDeleting(false);
