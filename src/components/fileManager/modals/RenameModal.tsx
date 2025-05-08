@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { renameItem } from "@/services/fileService";
 import { FileItem } from "@/types/server";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface RenameModalProps {
   isOpen: boolean;
@@ -20,7 +20,7 @@ interface RenameModalProps {
   item: FileItem;
   currentPath: string;
   ip: string;
-  pemFile: File;
+  pemFile?: File;
   onSuccess: () => void;
 }
 
@@ -33,46 +33,28 @@ const RenameModal = ({
   pemFile,
   onSuccess,
 }: RenameModalProps) => {
-  const [newName, setNewName] = useState("");
+  const [newName, setNewName] = useState(item?.name || "");
   const [isRenaming, setIsRenaming] = useState(false);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (item) {
-      setNewName(item.name);
-    }
-  }, [item]);
 
   const handleRename = async () => {
     if (!newName.trim()) {
-      toast({
-        title: "Error",
-        description: "Name cannot be empty",
-        variant: "destructive",
-      });
+      toast.error(`${item?.type === 'directory' ? 'Folder' : 'File'} name cannot be empty`);
       return;
     }
 
-    if (newName === item.name) {
-      onClose();
+    if (newName === item?.name) {
+      toast.error("New name cannot be the same as the current name");
       return;
     }
 
     setIsRenaming(true);
     try {
       await renameItem(ip, currentPath, item.name, newName, pemFile);
-      toast({
-        title: "Success",
-        description: `Successfully renamed "${item.name}" to "${newName}"`,
-      });
+      toast.success(`${item?.type === 'directory' ? 'Folder' : 'File'} renamed successfully`);
       onSuccess();
       onClose();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to rename. Please try again.",
-        variant: "destructive",
-      });
+      toast.error(`Failed to rename ${item?.type === 'directory' ? 'folder' : 'file'}. Please try again.`);
     } finally {
       setIsRenaming(false);
     }
@@ -82,15 +64,17 @@ const RenameModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Rename {item?.type === "directory" ? "Folder" : "File"}</DialogTitle>
+          <DialogTitle>
+            Rename {item?.type === "directory" ? "Folder" : "File"}
+          </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="newName" className="text-right">
-              New Name
+            <Label htmlFor="name" className="text-right">
+              Name
             </Label>
             <Input
-              id="newName"
+              id="name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               className="col-span-3"

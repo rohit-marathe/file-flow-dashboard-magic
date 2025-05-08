@@ -5,12 +5,9 @@ import {
   FileText, 
   Upload, 
   FolderPlus,
-  Edit, 
-  Trash2, 
   RefreshCw,
   ArrowLeft,
-  LogOut,
-  Info
+  LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -112,6 +109,11 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
     setIsEditFileModalOpen(true);
   };
 
+  // This function will be called after successful operations to refresh the file list
+  const handleOperationSuccess = async () => {
+    await fetchFiles();
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="flex flex-col space-y-6">
@@ -202,7 +204,7 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
         currentPath={currentPath}
         ip={serverConnection.ip}
         pemFile={serverConnection.pemFile}
-        onSuccess={fetchFiles}
+        onSuccess={handleOperationSuccess}
       />
 
       <UploadFileModal
@@ -211,7 +213,7 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
         currentPath={currentPath}
         ip={serverConnection.ip}
         pemFile={serverConnection.pemFile}
-        onSuccess={fetchFiles}
+        onSuccess={handleOperationSuccess}
       />
 
       {selectedItem && (
@@ -222,7 +224,7 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
             item={selectedItem}
             ip={serverConnection.ip}
             pemFile={serverConnection.pemFile}
-            onSuccess={fetchFiles}
+            onSuccess={handleOperationSuccess}
           />
 
           <RenameModal
@@ -232,7 +234,7 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
             currentPath={currentPath}
             ip={serverConnection.ip}
             pemFile={serverConnection.pemFile}
-            onSuccess={fetchFiles}
+            onSuccess={handleOperationSuccess}
           />
 
           <DeleteConfirmModal
@@ -241,7 +243,7 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
             item={selectedItem}
             ip={serverConnection.ip}
             pemFile={serverConnection.pemFile}
-            onSuccess={fetchFiles}
+            onSuccess={handleOperationSuccess}
           />
         </>
       )}

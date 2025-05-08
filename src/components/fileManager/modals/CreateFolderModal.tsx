@@ -11,14 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createFolder } from "@/services/fileService";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface CreateFolderModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentPath: string;
   ip: string;
-  pemFile: File;
+  pemFile?: File;
   onSuccess: () => void;
 }
 
@@ -32,34 +32,22 @@ const CreateFolderModal = ({
 }: CreateFolderModalProps) => {
   const [folderName, setFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const { toast } = useToast();
 
   const handleCreate = async () => {
     if (!folderName.trim()) {
-      toast({
-        title: "Error",
-        description: "Folder name cannot be empty",
-        variant: "destructive",
-      });
+      toast.error("Folder name cannot be empty");
       return;
     }
 
     setIsCreating(true);
     try {
       await createFolder(ip, currentPath, folderName, pemFile);
-      toast({
-        title: "Success",
-        description: `Folder "${folderName}" created successfully`,
-      });
+      toast.success(`Folder "${folderName}" created successfully`);
       onSuccess();
       onClose();
       setFolderName("");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create folder. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to create folder. Please try again.");
     } finally {
       setIsCreating(false);
     }

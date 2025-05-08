@@ -1,25 +1,24 @@
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { deleteItem } from "@/services/fileService";
 import { FileItem } from "@/types/server";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: FileItem;
   ip: string;
-  pemFile: File;
+  pemFile?: File;
   onSuccess: () => void;
 }
 
@@ -32,52 +31,46 @@ const DeleteConfirmModal = ({
   onSuccess,
 }: DeleteConfirmModalProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
-  const { toast } = useToast();
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
       await deleteItem(ip, item.path, pemFile);
-      toast({
-        title: "Success",
-        description: `"${item.name}" deleted successfully`,
-      });
+      toast.success(`${item.type === 'directory' ? 'Folder' : 'File'} "${item.name}" deleted successfully`);
       onSuccess();
       onClose();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete. Please try again.",
-        variant: "destructive",
-      });
+      toast.error(`Failed to delete ${item.type === 'directory' ? 'folder' : 'file'}. Please try again.`);
     } finally {
       setIsDeleting(false);
     }
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete{" "}
-            <strong>{item?.name}</strong>{" "}
-            {item?.type === "directory" ? "and all its contents" : ""}.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Confirm Deletion</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete {item?.type === "directory" ? "folder" : "file"}{" "}
+            <span className="font-medium text-foreground">"{item?.name}"</span>?
+            {item?.type === "directory" && (
+              <div className="mt-2 text-destructive">
+                Warning: This will delete all content inside this folder as well.
+              </div>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
             {isDeleting ? "Deleting..." : "Delete"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

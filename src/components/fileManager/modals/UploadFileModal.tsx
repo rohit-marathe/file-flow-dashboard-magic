@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { uploadFile } from "@/services/fileService";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Upload } from "lucide-react";
 
 interface UploadFileModalProps {
@@ -19,7 +19,7 @@ interface UploadFileModalProps {
   onClose: () => void;
   currentPath: string;
   ip: string;
-  pemFile: File;
+  pemFile?: File;
   onSuccess: () => void;
 }
 
@@ -34,7 +34,6 @@ const UploadFileModal = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -44,31 +43,20 @@ const UploadFileModal = ({
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      toast({
-        title: "Error",
-        description: "Please select a file to upload",
-        variant: "destructive",
-      });
+      toast.error("Please select a file to upload");
       return;
     }
 
     setIsUploading(true);
     try {
       await uploadFile(ip, currentPath, selectedFile, pemFile);
-      toast({
-        title: "Success",
-        description: `File "${selectedFile.name}" uploaded successfully`,
-      });
+      toast.success(`File "${selectedFile.name}" uploaded successfully`);
       onSuccess();
       onClose();
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to upload file. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to upload file. Please try again.");
     } finally {
       setIsUploading(false);
     }

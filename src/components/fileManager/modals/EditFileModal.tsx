@@ -11,14 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { readFile, saveFile } from "@/services/fileService";
 import { FileItem } from "@/types/server";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface EditFileModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: FileItem;
   ip: string;
-  pemFile: File;
+  pemFile?: File;
   onSuccess: () => void;
 }
 
@@ -34,7 +34,6 @@ const EditFileModal = ({
   const [originalContent, setOriginalContent] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen && item) {
@@ -49,11 +48,7 @@ const EditFileModal = ({
       setContent(fileContent);
       setOriginalContent(fileContent);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to read file content",
-        variant: "destructive",
-      });
+      toast.error("Failed to read file content");
       onClose();
     } finally {
       setIsLoading(false);
@@ -64,18 +59,11 @@ const EditFileModal = ({
     setIsSaving(true);
     try {
       await saveFile(ip, item.path, content, pemFile);
-      toast({
-        title: "Success",
-        description: `File "${item.name}" saved successfully`,
-      });
+      toast.success(`File "${item.name}" saved successfully`);
       onSuccess();
       onClose();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save file. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to save file. Please try again.");
     } finally {
       setIsSaving(false);
     }
