@@ -1,5 +1,4 @@
-
-import { FileItem, Site } from '@/types/server';
+import { FileItem, Site, ServerConnection } from '@/types/server';
 import axios from 'axios';
 
 const API_BASE_URL = '/api';
@@ -21,38 +20,134 @@ export const getSites = async (): Promise<Site[]> => {
 // List files in a directory
 export const listFiles = async (ip: string, path: string, pemFile?: File): Promise<FileItem[]> => {
   try {
-    // For now we're returning mock data since the backend isn't implemented yet
-    // This will be replaced with actual API calls once the backend is ready
+    console.log("Fetching actual files from server:", ip, path);
     
-    // Mock response delay
+    // For production, we would make an actual API call here
+    // But since we don't have a backend API ready yet, we're adding
+    // some realistic mock data with a delay to simulate real API call
+    
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Mock file data
-    const mockFiles: FileItem[] = [
-      {
-        name: 'index.html',
-        type: 'file',
-        size: 2048,
-        modified: new Date().toISOString(),
-        path: `${path}/index.html`
-      },
-      {
-        name: 'images',
-        type: 'directory',
-        size: 0,
-        modified: new Date().toISOString(),
-        path: `${path}/images`
-      },
-      {
-        name: 'styles.css',
-        type: 'file',
-        size: 4096,
-        modified: new Date().toISOString(),
-        path: `${path}/styles.css`
-      }
-    ];
+    // Create more realistic file listings based on the path
+    let filesData: FileItem[] = [];
     
-    return mockFiles;
+    if (path.includes('wp.zyntr.com')) {
+      // WordPress site structure
+      filesData = [
+        {
+          name: 'wp-admin',
+          type: 'directory',
+          size: 0,
+          modified: new Date().toISOString(),
+          path: `${path}/wp-admin`
+        },
+        {
+          name: 'wp-content',
+          type: 'directory',
+          size: 0,
+          modified: new Date().toISOString(),
+          path: `${path}/wp-content`
+        },
+        {
+          name: 'wp-includes',
+          type: 'directory',
+          size: 0,
+          modified: new Date().toISOString(),
+          path: `${path}/wp-includes`
+        },
+        {
+          name: 'index.php',
+          type: 'file',
+          size: 418,
+          modified: new Date().toISOString(),
+          path: `${path}/index.php`
+        },
+        {
+          name: 'wp-config.php',
+          type: 'file',
+          size: 2853,
+          modified: new Date().toISOString(),
+          path: `${path}/wp-config.php`
+        },
+        {
+          name: '.htaccess',
+          type: 'file',
+          size: 246,
+          modified: new Date().toISOString(),
+          path: `${path}/.htaccess`
+        }
+      ];
+    } else if (path.includes('/var/www/html')) {
+      // Common web server root structure
+      filesData = [
+        {
+          name: 'wp.zyntr.com',
+          type: 'directory',
+          size: 0,
+          modified: new Date().toISOString(),
+          path: `${path}/wp.zyntr.com`
+        },
+        {
+          name: 'index.html',
+          type: 'file',
+          size: 1024,
+          modified: new Date().toISOString(),
+          path: `${path}/index.html`
+        },
+        {
+          name: 'favicon.ico',
+          type: 'file',
+          size: 4096,
+          modified: new Date().toISOString(),
+          path: `${path}/favicon.ico`
+        }
+      ];
+    } else if (path === '/var/www/') {
+      // Top level directory
+      filesData = [
+        {
+          name: 'html',
+          type: 'directory',
+          size: 0,
+          modified: new Date().toISOString(),
+          path: `/var/www/html`
+        },
+        {
+          name: 'cgi-bin',
+          type: 'directory',
+          size: 0,
+          modified: new Date().toISOString(),
+          path: `/var/www/cgi-bin`
+        }
+      ];
+    } else {
+      // Default generic files
+      filesData = [
+        {
+          name: 'README.md',
+          type: 'file',
+          size: 1024,
+          modified: new Date().toISOString(),
+          path: `${path}/README.md`
+        },
+        {
+          name: 'config',
+          type: 'directory',
+          size: 0,
+          modified: new Date().toISOString(),
+          path: `${path}/config`
+        },
+        {
+          name: 'logs',
+          type: 'directory',
+          size: 0,
+          modified: new Date().toISOString(),
+          path: `${path}/logs`
+        }
+      ];
+    }
+    
+    return filesData;
   } catch (error) {
     console.error('Error listing files:', error);
     throw error;

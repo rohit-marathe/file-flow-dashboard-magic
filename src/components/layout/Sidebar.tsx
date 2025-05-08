@@ -2,8 +2,7 @@
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
-  Files, 
-  Server
+  Files
 } from 'lucide-react';
 
 interface SidebarItemProps {
@@ -46,12 +45,6 @@ export function Sidebar({ className, activePath = '/' }: SidebarProps) {
             label="File Manager" 
             href="/dashboard/file-manager"
             active={activePath.includes('/dashboard/file-manager')} 
-          />
-          <SidebarItem 
-            icon={Server} 
-            label="Server Connections" 
-            href="/dashboard/instances"
-            active={activePath.includes('/dashboard/instances')} 
           />
         </div>
       </div>

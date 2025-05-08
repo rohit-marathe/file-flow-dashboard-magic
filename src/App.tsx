@@ -19,7 +19,6 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard/file-manager" replace />} />
           <Route path="/dashboard/file-manager" element={<FileManager />} />
-          <Route path="/dashboard/instances" element={<FileManager />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

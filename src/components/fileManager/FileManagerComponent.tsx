@@ -9,7 +9,8 @@ import {
   Trash2, 
   RefreshCw,
   ArrowLeft,
-  LogOut
+  LogOut,
+  Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -118,9 +119,15 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
           <h1 className="text-3xl font-bold">File Manager</h1>
           
           <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Connected to:</span>
-              <span className="text-sm text-muted-foreground">{serverConnection.ip}</span>
+            <div className="flex flex-col gap-1 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Server:</span>
+                <span className="text-muted-foreground">{serverConnection.ip}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">User:</span>
+                <span className="text-muted-foreground">{serverConnection.username}</span>
+              </div>
             </div>
             <Button variant="outline" size="sm" onClick={onDisconnect}>
               <LogOut className="h-4 w-4 mr-1" />
