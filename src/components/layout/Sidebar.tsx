@@ -2,11 +2,7 @@
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
-  Home, 
   Files, 
-  Settings, 
-  Users, 
-  Database,
   Server
 } from 'lucide-react';
 
@@ -42,15 +38,9 @@ export function Sidebar({ className, activePath = '/' }: SidebarProps) {
     <div className={cn("pb-12 w-64 border-r", className)}>
       <div className="px-3 py-4">
         <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-          Dashboard
+          SSH File Manager
         </h2>
         <div className="space-y-1">
-          <SidebarItem 
-            icon={Home} 
-            label="Home" 
-            href="/"
-            active={activePath === '/'} 
-          />
           <SidebarItem 
             icon={Files} 
             label="File Manager" 
@@ -59,27 +49,9 @@ export function Sidebar({ className, activePath = '/' }: SidebarProps) {
           />
           <SidebarItem 
             icon={Server} 
-            label="Instances" 
+            label="Server Connections" 
             href="/dashboard/instances"
             active={activePath.includes('/dashboard/instances')} 
-          />
-          <SidebarItem 
-            icon={Database} 
-            label="Databases" 
-            href="/dashboard/databases"
-            active={activePath.includes('/dashboard/databases')} 
-          />
-          <SidebarItem 
-            icon={Users} 
-            label="Users" 
-            href="/dashboard/users"
-            active={activePath.includes('/dashboard/users')} 
-          />
-          <SidebarItem 
-            icon={Settings} 
-            label="Settings" 
-            href="/dashboard/settings"
-            active={activePath.includes('/dashboard/settings')} 
           />
         </div>
       </div>

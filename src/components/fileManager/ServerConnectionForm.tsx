@@ -13,21 +13,26 @@ import {
 } from '@/components/ui/form';
 import { toast } from 'sonner';
 import { ServerConnection } from '@/types/server';
+import { Lock } from 'lucide-react';
 
 interface ServerConnectionFormProps {
   onConnect: (connectionDetails: ServerConnection) => void;
+  isConnecting?: boolean;
 }
 
-const ServerConnectionForm = ({ onConnect }: ServerConnectionFormProps) => {
-  const [isUploading, setIsUploading] = useState(false);
+const ServerConnectionForm = ({ onConnect, isConnecting = false }: ServerConnectionFormProps) => {
   const [pemFile, setPemFile] = useState<File | null>(null);
 
   const form = useForm<{
     ip: string;
+    username: string;
+    port: string;
     path: string;
   }>({
     defaultValues: {
       ip: '',
+      username: 'ubuntu',
+      port: '22',
       path: '/var/www/'
     }
   });
@@ -46,7 +51,7 @@ const ServerConnectionForm = ({ onConnect }: ServerConnectionFormProps) => {
     }
   };
 
-  const onSubmit = (values: { ip: string; path: string }) => {
+  const onSubmit = (values: { ip: string; username: string; port: string; path: string }) => {
     if (!pemFile) {
       toast.error('Please upload a PEM key file');
       return;
@@ -55,23 +60,24 @@ const ServerConnectionForm = ({ onConnect }: ServerConnectionFormProps) => {
     // Create connection object with form values and file
     const connectionDetails: ServerConnection = {
       ip: values.ip,
+      username: values.username,
+      port: Number(values.port),
       path: values.path,
       pemFile: pemFile
     };
 
-    setIsUploading(true);
-    
-    // Simulate connection test
-    setTimeout(() => {
-      setIsUploading(false);
-      onConnect(connectionDetails);
-      toast.success('Successfully connected to server');
-    }, 1500);
+    onConnect(connectionDetails);
   };
 
   return (
     <div className="bg-card border rounded-lg p-6 max-w-md mx-auto mt-8 shadow-sm">
-      <h2 className="text-2xl font-semibold mb-6">Connect to Server</h2>
+      <div className="flex items-center justify-center mb-6">
+        <div className="bg-primary/10 p-3 rounded-full">
+          <Lock className="h-6 w-6 text-primary" />
+        </div>
+      </div>
+      
+      <h2 className="text-2xl font-semibold mb-6 text-center">SSH Connection</h2>
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -92,6 +98,44 @@ const ServerConnectionForm = ({ onConnect }: ServerConnectionFormProps) => {
               </FormItem>
             )}
           />
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Username</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="ubuntu" 
+                      {...field}
+                      required
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="port"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Port</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="22" 
+                      {...field}
+                      required
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           <FormField
             control={form.control}
@@ -130,9 +174,9 @@ const ServerConnectionForm = ({ onConnect }: ServerConnectionFormProps) => {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={isUploading}
+            disabled={isConnecting}
           >
-            {isUploading ? 'Connecting...' : 'Connect to Server'}
+            {isConnecting ? 'Connecting...' : 'Connect to Server'}
           </Button>
         </form>
       </Form>

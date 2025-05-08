@@ -1,6 +1,8 @@
 
 export interface ServerConnection {
   ip: string;
+  username?: string;
+  port?: number;
   path: string;
   pemFile: File;
 }
