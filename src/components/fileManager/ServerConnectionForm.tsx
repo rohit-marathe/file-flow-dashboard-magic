@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/form';
 import { toast } from 'sonner';
 import { ServerConnection } from '@/types/server';
-import { Lock } from 'lucide-react';
+import { Lock, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ServerConnectionFormProps {
   onConnect: (connectionDetails: ServerConnection) => void;
@@ -22,6 +23,7 @@ interface ServerConnectionFormProps {
 
 const ServerConnectionForm = ({ onConnect, isConnecting = false }: ServerConnectionFormProps) => {
   const [pemFile, setPemFile] = useState<File | null>(null);
+  const [pemFileError, setPemFileError] = useState<string | null>(null);
 
   const form = useForm<{
     ip: string;
@@ -33,19 +35,29 @@ const ServerConnectionForm = ({ onConnect, isConnecting = false }: ServerConnect
       ip: '',
       username: 'ubuntu',
       port: '22',
-      path: '/var/www/'
+      path: '/var/www/html/'
     }
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
+    setPemFileError(null);
+    
     if (files && files.length > 0) {
       const file = files[0];
       // Check if it's a PEM file
       if (file.name.endsWith('.pem')) {
         setPemFile(file);
+        console.log("PEM file selected:", file.name, "Size:", file.size);
+        
+        // Basic file size validation
+        if (file.size === 0) {
+          setPemFileError("The selected PEM file appears to be empty");
+        } else if (file.size > 10 * 1024 * 1024) {
+          setPemFileError("The selected PEM file is too large (max 10MB)");
+        }
       } else {
-        toast.error('Please upload a valid .pem file');
+        setPemFileError('Please upload a valid .pem file');
         e.target.value = '';
       }
     }
@@ -53,7 +65,7 @@ const ServerConnectionForm = ({ onConnect, isConnecting = false }: ServerConnect
 
   const onSubmit = (values: { ip: string; username: string; port: string; path: string }) => {
     if (!pemFile) {
-      toast.error('Please upload a PEM key file');
+      setPemFileError('Please upload a PEM key file');
       return;
     }
 
@@ -66,6 +78,7 @@ const ServerConnectionForm = ({ onConnect, isConnecting = false }: ServerConnect
       pemFile: pemFile
     };
 
+    console.log("Submitting connection with PEM file:", pemFile.name, pemFile.size);
     onConnect(connectionDetails);
   };
 
@@ -127,6 +140,9 @@ const ServerConnectionForm = ({ onConnect, isConnecting = false }: ServerConnect
                   <FormControl>
                     <Input 
                       placeholder="22" 
+                      type="number"
+                      min="1"
+                      max="65535"
                       {...field}
                       required
                     />
@@ -164,17 +180,25 @@ const ServerConnectionForm = ({ onConnect, isConnecting = false }: ServerConnect
               onChange={handleFileChange}
               required
             />
-            {pemFile && (
+            {pemFile && !pemFileError && (
               <p className="text-sm text-muted-foreground">
-                Selected: {pemFile.name}
+                Selected: {pemFile.name} ({Math.round(pemFile.size / 1024)} KB)
               </p>
+            )}
+            {pemFileError && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="ml-2">
+                  {pemFileError}
+                </AlertDescription>
+              </Alert>
             )}
           </div>
 
           <Button 
             type="submit" 
             className="w-full"
-            disabled={isConnecting}
+            disabled={isConnecting || !!pemFileError}
           >
             {isConnecting ? 'Connecting...' : 'Connect to Server'}
           </Button>

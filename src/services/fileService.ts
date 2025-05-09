@@ -3,20 +3,6 @@ import { FileItem, Site, ServerConnection, FilePermissions, BackendResponse } fr
 
 const API_BASE_URL = '/api';  // Using the proxy
 
-// Get list of sites/domains
-export const getSites = async (): Promise<Site[]> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/sites`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch sites');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching sites:', error);
-    throw error;
-  }
-};
-
 // Create FormData with connection details and PEM file
 const createFormData = (connection: Partial<ServerConnection>, additionalData: Record<string, any> = {}) => {
   const formData = new FormData();
@@ -29,9 +15,11 @@ const createFormData = (connection: Partial<ServerConnection>, additionalData: R
   
   // Add PEM file if provided
   if (connection.pemFile && connection.pemFile instanceof File) {
+    console.log("Adding PEM file to request:", connection.pemFile.name, connection.pemFile.size);
     formData.append('pemFile', connection.pemFile);
   } else {
-    console.warn('PEM file is missing or not a File object');
+    console.error('PEM file is missing or not a File object:', connection.pemFile);
+    throw new Error('PEM file is required and must be a valid File object');
   }
   
   // Add any additional data
@@ -48,6 +36,57 @@ const createFormData = (connection: Partial<ServerConnection>, additionalData: R
   return formData;
 };
 
+// Helper function for API requests with better error handling
+const fetchWithErrorHandling = async (endpoint: string, options: RequestInit): Promise<any> => {
+  try {
+    console.log(`Making request to ${endpoint}`);
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+    
+    console.log(`Response from ${endpoint}:`, response.status);
+    
+    // For non-200 responses, try to parse error
+    if (!response.ok) {
+      let errorMessage = `Server error: ${response.status} ${response.statusText}`;
+      
+      try {
+        const textResponse = await response.text();
+        console.log(`Error response body:`, textResponse);
+        
+        if (textResponse) {
+          try {
+            const errorData = JSON.parse(textResponse);
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            // If not valid JSON, use text as error
+            errorMessage = textResponse || errorMessage;
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing error response:", e);
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    const responseText = await response.text();
+    console.log(`Success response size:`, responseText.length);
+    
+    if (!responseText) {
+      throw new Error('Empty response from server');
+    }
+    
+    try {
+      return JSON.parse(responseText);
+    } catch (e) {
+      console.error('Error parsing JSON response:', e);
+      throw new Error(`Invalid JSON response: ${e.message}`);
+    }
+  } catch (error) {
+    console.error(`API request to ${endpoint} failed:`, error);
+    throw error;
+  }
+};
+
 // List files in a directory
 export const listFiles = async (ip: string, path: string, pemFile?: File): Promise<FileItem[]> => {
   try {
@@ -58,50 +97,38 @@ export const listFiles = async (ip: string, path: string, pemFile?: File): Promi
       throw new Error('PEM file is required and must be a File object');
     }
     
+    if (pemFile.size === 0) {
+      throw new Error('PEM file is empty');
+    }
+    
     const formData = createFormData({ ip, path, pemFile });
     
     // Log formData for debugging
     console.log('Sending FormData with keys:', [...formData.keys()]);
     
-    const response = await fetch(`${API_BASE_URL}/list`, {
+    const result = await fetchWithErrorHandling('/list', {
       method: 'POST',
       body: formData,
     });
     
-    // Add detailed logging for debugging
-    console.log('Response status:', response.status);
-    
-    const responseText = await response.text();
-    console.log('Response text:', responseText);
-    
-    if (!response.ok) {
-      console.error('Server error response:', responseText);
-      try {
-        const errorData = JSON.parse(responseText);
-        throw new Error(errorData.error || 'Failed to list files');
-      } catch (e) {
-        throw new Error(`Failed to list files: ${responseText || response.statusText}`);
-      }
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to list files');
     }
     
-    if (!responseText) {
-      throw new Error('Empty response from server');
-    }
-    
-    try {
-      const result: BackendResponse<FileItem[]> = JSON.parse(responseText);
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.error || 'Failed to list files');
-      }
-      
-      return result.data;
-    } catch (jsonError) {
-      console.error('JSON parse error:', jsonError);
-      throw new Error(`Invalid response format: ${jsonError.message}`);
-    }
+    return result.data;
   } catch (error) {
     console.error('Error listing files:', error);
+    throw error;
+  }
+};
+
+// Get list of sites/domains
+export const getSites = async (): Promise<Site[]> => {
+  try {
+    const result = await fetchWithErrorHandling('/sites', { method: 'GET' });
+    return result.data || [];
+  } catch (error) {
+    console.error('Error fetching sites:', error);
     throw error;
   }
 };
@@ -116,23 +143,14 @@ export const createFolder = async (ip: string, path: string, folderName: string,
       { folderName }
     );
     
-    const response = await fetch(`${API_BASE_URL}/createFolder`, {
+    const result = await fetchWithErrorHandling('/createFolder', {
       method: 'POST',
       body: formData,
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to create folder');
-    }
-    
-    const result = await response.json();
-    
     if (!result.success) {
       throw new Error(result.error || 'Failed to create folder');
     }
-    
-    return;
   } catch (error) {
     console.error('Error creating folder:', error);
     throw error;
@@ -150,23 +168,14 @@ export const uploadFile = async (ip: string, path: string, file: File, pemFile?:
     if (pemFile) formData.append('pemFile', pemFile);
     formData.append('fileToUpload', file);
     
-    const response = await fetch(`${API_BASE_URL}/upload`, {
+    const result = await fetchWithErrorHandling('/upload', {
       method: 'POST',
       body: formData,
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to upload file');
-    }
-    
-    const result = await response.json();
-    
     if (!result.success) {
       throw new Error(result.error || 'Failed to upload file');
     }
-    
-    return;
   } catch (error) {
     console.error('Error uploading file:', error);
     throw error;
@@ -183,23 +192,14 @@ export const renameItem = async (ip: string, currentPath: string, oldName: strin
       { currentPath, oldName, newName }
     );
     
-    const response = await fetch(`${API_BASE_URL}/rename`, {
+    const result = await fetchWithErrorHandling('/rename', {
       method: 'POST',
       body: formData,
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to rename item');
-    }
-    
-    const result = await response.json();
-    
     if (!result.success) {
       throw new Error(result.error || 'Failed to rename item');
     }
-    
-    return;
   } catch (error) {
     console.error('Error renaming item:', error);
     throw error;
@@ -207,35 +207,23 @@ export const renameItem = async (ip: string, currentPath: string, oldName: strin
 };
 
 // Delete a file or folder
-export const deleteItem = async (ip: string, path: string, pemFile?: File): Promise<void> => {
+export const deleteItem = async (ip: string, path: string, pemFile?: File, isDirectory: boolean = false): Promise<void> => {
   try {
-    console.log(`Deleting: ${path} on ${ip}`);
-    
-    // Determine if it's a directory based on path (this is just a guess, real implementation should have this info)
-    const isDirectory = path.endsWith('/');
+    console.log(`Deleting: ${path} on ${ip} (isDirectory: ${isDirectory})`);
     
     const formData = createFormData(
       { ip, path, pemFile },
       { isDirectory: String(isDirectory) }
     );
     
-    const response = await fetch(`${API_BASE_URL}/delete`, {
+    const result = await fetchWithErrorHandling('/delete', {
       method: 'POST',
       body: formData,
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to delete item');
-    }
-    
-    const result = await response.json();
-    
     if (!result.success) {
       throw new Error(result.error || 'Failed to delete item');
     }
-    
-    return;
   } catch (error) {
     console.error('Error deleting item:', error);
     throw error;
@@ -249,17 +237,10 @@ export const readFile = async (ip: string, path: string, pemFile?: File): Promis
     
     const formData = createFormData({ ip, path, pemFile });
     
-    const response = await fetch(`${API_BASE_URL}/readFile`, {
+    const result = await fetchWithErrorHandling('/readFile', {
       method: 'POST',
       body: formData,
     });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to read file');
-    }
-    
-    const result: BackendResponse<string> = await response.json();
     
     if (!result.success || result.data === undefined) {
       throw new Error(result.error || 'Failed to read file');
@@ -282,23 +263,14 @@ export const saveFile = async (ip: string, path: string, content: string, pemFil
       { content }
     );
     
-    const response = await fetch(`${API_BASE_URL}/saveFile`, {
+    const result = await fetchWithErrorHandling('/saveFile', {
       method: 'POST',
       body: formData,
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to save file');
-    }
-    
-    const result = await response.json();
-    
     if (!result.success) {
       throw new Error(result.error || 'Failed to save file');
     }
-    
-    return;
   } catch (error) {
     console.error('Error saving file:', error);
     throw error;
@@ -320,23 +292,14 @@ export const updatePermissions = async (
       { permissions }
     );
     
-    const response = await fetch(`${API_BASE_URL}/permissions`, {
+    const result = await fetchWithErrorHandling('/permissions', {
       method: 'POST',
       body: formData,
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to update permissions');
-    }
-    
-    const result = await response.json();
-    
     if (!result.success) {
       throw new Error(result.error || 'Failed to update permissions');
     }
-    
-    return;
   } catch (error) {
     console.error('Error updating permissions:', error);
     throw error;
@@ -358,23 +321,14 @@ export const copyItem = async (
       { sourcePath, destinationPath }
     );
     
-    const response = await fetch(`${API_BASE_URL}/copy`, {
+    const result = await fetchWithErrorHandling('/copy', {
       method: 'POST',
       body: formData,
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to copy item');
-    }
-    
-    const result = await response.json();
-    
     if (!result.success) {
       throw new Error(result.error || 'Failed to copy item');
     }
-    
-    return;
   } catch (error) {
     console.error('Error copying item:', error);
     throw error;
@@ -396,23 +350,14 @@ export const moveItem = async (
       { sourcePath, destinationPath }
     );
     
-    const response = await fetch(`${API_BASE_URL}/move`, {
+    const result = await fetchWithErrorHandling('/move', {
       method: 'POST',
       body: formData,
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to move item');
-    }
-    
-    const result = await response.json();
-    
     if (!result.success) {
       throw new Error(result.error || 'Failed to move item');
     }
-    
-    return;
   } catch (error) {
     console.error('Error moving item:', error);
     throw error;
