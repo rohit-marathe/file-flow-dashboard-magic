@@ -1,6 +1,7 @@
+
 import { FileItem, Site, ServerConnection, FilePermissions, BackendResponse } from '@/types/server';
 
-const API_BASE_URL = '/api';  // Updated to use the proxy
+const API_BASE_URL = '/api';  // Using the proxy
 
 // Get list of sites/domains
 export const getSites = async (): Promise<Site[]> => {
@@ -55,18 +56,39 @@ export const listFiles = async (ip: string, path: string, pemFile?: File): Promi
       body: formData,
     });
     
+    // Add detailed logging for debugging
+    console.log('Response status:', response.status);
+    
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to list files');
+      const errorText = await response.text();
+      console.error('Server error response:', errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        throw new Error(errorData.error || 'Failed to list files');
+      } catch (e) {
+        throw new Error(`Failed to list files: ${errorText || response.statusText}`);
+      }
     }
     
-    const result: BackendResponse<FileItem[]> = await response.json();
+    const responseText = await response.text();
+    console.log('Response text:', responseText);
     
-    if (!result.success || !result.data) {
-      throw new Error(result.error || 'Failed to list files');
+    if (!responseText) {
+      throw new Error('Empty response from server');
     }
     
-    return result.data;
+    try {
+      const result: BackendResponse<FileItem[]> = JSON.parse(responseText);
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to list files');
+      }
+      
+      return result.data;
+    } catch (jsonError) {
+      console.error('JSON parse error:', jsonError);
+      throw new Error(`Invalid response format: ${jsonError.message}`);
+    }
   } catch (error) {
     console.error('Error listing files:', error);
     throw error;

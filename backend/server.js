@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
@@ -11,13 +10,41 @@ const tmp = require('tmp');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Improved CORS configuration
+app.use(cors({
+  origin: ['http://localhost:8080', 'http://127.0.0.1:8080', 'https://1cd50fc7-8147-44c3-b64a-bda502db9211.lovableproject.com'],
+  credentials: true
+}));
+
 // Configure middleware
-app.use(cors()); // Enable CORS for all routes
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Set up multer for file uploads
-const upload = multer({ dest: 'uploads/' });
+// Set up multer for file uploads - with error handling
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // Create uploads directory if it doesn't exist
+    const dir = './uploads';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
+
+// Debug middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // Store active SSH connections
 const sshConnections = new Map();
@@ -76,75 +103,149 @@ const closeSSHConnection = (ip, username, port) => {
 
 // List files in a directory
 app.post('/api/list', upload.single('pemFile'), async (req, res) => {
+  console.log('List files request received');
+  
+  // Check if pemFile was uploaded
+  if (!req.file) {
+    console.error('No PEM file uploaded');
+    return res.status(400).json({
+      success: false,
+      error: 'PEM file is required'
+    });
+  }
+  
   try {
-    const { ip, username, port, path: remotePath } = req.body;
+    const { ip, username = 'root', port = 22, path: remotePath } = req.body;
+    console.log(`Request parameters: IP=${ip}, User=${username}, Port=${port}, Path=${remotePath}`);
+    
+    if (!ip || !remotePath) {
+      console.error('Missing required parameters');
+      return res.status(400).json({
+        success: false,
+        error: 'IP address and path are required'
+      });
+    }
     
     // Get pemFile content from the uploaded file
-    const privateKey = fs.readFileSync(req.file.path);
+    const privateKeyPath = req.file.path;
+    if (!fs.existsSync(privateKeyPath)) {
+      console.error('PEM file not found at path:', privateKeyPath);
+      return res.status(500).json({
+        success: false,
+        error: 'PEM file upload failed'
+      });
+    }
     
-    // Get or create SSH connection
-    const conn = await getSSHConnection(ip, username, port || 22, privateKey);
+    const privateKey = fs.readFileSync(privateKeyPath);
     
-    // Execute SFTP operation
-    conn.sftp((err, sftp) => {
-      if (err) {
-        console.error('SFTP error:', err);
-        return res.status(500).json({
-          success: false,
-          error: `SFTP error: ${err.message}`
-        });
-      }
+    try {
+      console.log('Establishing SSH connection...');
+      // Get or create SSH connection
+      const conn = await getSSHConnection(ip, username, port, privateKey);
       
-      sftp.readdir(remotePath, (err, list) => {
+      // Execute SFTP operation
+      conn.sftp((err, sftp) => {
         if (err) {
-          console.error('Directory listing error:', err);
+          console.error('SFTP error:', err);
           return res.status(500).json({
             success: false,
-            error: `Failed to list directory: ${err.message}`
+            error: `SFTP error: ${err.message}`
           });
         }
         
-        // Process the list into our FileItem format
-        const files = list.map(item => {
-          const isDirectory = item.longname.charAt(0) === 'd';
-          const permissions = {
-            read: item.longname.charAt(1) === 'r',
-            write: item.longname.charAt(2) === 'w',
-            execute: item.longname.charAt(3) === 'x',
-            owner: item.longname.split(' ')[2] || 'unknown',
-            group: item.longname.split(' ')[3] || 'unknown',
+        console.log(`Reading directory: ${remotePath}`);
+        sftp.readdir(remotePath, (err, list) => {
+          if (err) {
+            console.error('Directory listing error:', err);
+            return res.status(500).json({
+              success: false,
+              error: `Failed to list directory: ${err.message}`
+            });
+          }
+          
+          if (!list || !Array.isArray(list)) {
+            console.error('Invalid list response:', list);
+            return res.status(500).json({
+              success: false,
+              error: 'Invalid directory listing response'
+            });
+          }
+          
+          console.log(`Found ${list.length} items in directory`);
+          
+          // Process the list into our FileItem format
+          const files = list.map(item => {
+            const isDirectory = item.longname.charAt(0) === 'd';
+            const permissions = {
+              read: item.longname.charAt(1) === 'r',
+              write: item.longname.charAt(2) === 'w',
+              execute: item.longname.charAt(3) === 'x',
+              owner: item.longname.split(' ')[2] || 'unknown',
+              group: item.longname.split(' ')[3] || 'unknown',
+            };
+            
+            // Handle path joining correctly
+            let fullPath = remotePath;
+            if (!fullPath.endsWith('/')) fullPath += '/';
+            fullPath += item.filename;
+            
+            return {
+              name: item.filename,
+              type: isDirectory ? 'directory' : 'file',
+              size: item.attrs.size || 0,
+              modified: new Date(item.attrs.mtime * 1000).toISOString(),
+              path: fullPath,
+              permissions,
+            };
+          });
+          
+          // Clean up the uploaded file
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (unlinkErr) {
+            console.error('Error deleting PEM file:', unlinkErr);
+          }
+          
+          // Send the response
+          const response = {
+            success: true,
+            data: files
           };
           
-          // Handle path joining correctly
-          let fullPath = remotePath;
-          if (!fullPath.endsWith('/')) fullPath += '/';
-          fullPath += item.filename;
-          
-          return {
-            name: item.filename,
-            type: isDirectory ? 'directory' : 'file',
-            size: item.attrs.size || 0,
-            modified: new Date(item.attrs.mtime * 1000).toISOString(),
-            path: fullPath,
-            permissions,
-          };
-        });
-        
-        res.json({
-          success: true,
-          data: files
+          console.log('Sending response');
+          res.json(response);
         });
       });
-    });
-    
-    // Clean up the uploaded file
-    fs.unlinkSync(req.file.path);
-    
+    } catch (sshError) {
+      console.error('SSH connection error:', sshError);
+      
+      // Clean up the uploaded file
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkErr) {
+        console.error('Error deleting PEM file:', unlinkErr);
+      }
+      
+      res.status(500).json({
+        success: false,
+        error: `SSH connection failed: ${sshError.message}`
+      });
+    }
   } catch (error) {
     console.error('Error in list endpoint:', error);
+    
+    // Clean up the uploaded file if it exists
+    if (req.file && req.file.path) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkErr) {
+        console.error('Error deleting PEM file:', unlinkErr);
+      }
+    }
+    
     res.status(500).json({
       success: false,
-      error: error.message
+      error: `Server error: ${error.message}`
     });
   }
 });
@@ -672,9 +773,19 @@ app.post('/api/disconnect', (req, res) => {
   }
 });
 
+// Simple health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Backend server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`SFTP backend server running on port ${PORT}`);
+  console.log(`CORS enabled for: http://localhost:8080, http://127.0.0.1:8080, https://1cd50fc7-8147-44c3-b64a-bda502db9211.lovableproject.com`);
 });
 
 // Cleanup on process exit
@@ -687,6 +798,19 @@ process.on('exit', () => {
       console.error('Error closing connection:', error);
     }
   });
+  
+  // Clean up uploads directory
+  try {
+    const uploadsDir = './uploads';
+    if (fs.existsSync(uploadsDir)) {
+      const files = fs.readdirSync(uploadsDir);
+      files.forEach(file => {
+        fs.unlinkSync(path.join(uploadsDir, file));
+      });
+    }
+  } catch (error) {
+    console.error('Error cleaning up uploads directory:', error);
+  }
 });
 
 module.exports = app;
