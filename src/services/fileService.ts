@@ -1,5 +1,4 @@
-
-import { FileItem, Site, ServerConnection } from '@/types/server';
+import { FileItem, Site, ServerConnection, FilePermissions } from '@/types/server';
 
 const API_BASE_URL = '/api';
 
@@ -11,14 +10,28 @@ let mockFileSystem = {
       type: 'directory' as const,
       size: 0,
       modified: new Date().toISOString(),
-      path: `/var/www/html`
+      path: `/var/www/html`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: true,
+        owner: 'root',
+        group: 'www-data'
+      }
     },
     {
       name: 'cgi-bin',
       type: 'directory' as const,
       size: 0,
       modified: new Date().toISOString(),
-      path: `/var/www/cgi-bin`
+      path: `/var/www/cgi-bin`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: true,
+        owner: 'root',
+        group: 'www-data'
+      }
     }
   ],
   '/var/www/html': [
@@ -27,21 +40,42 @@ let mockFileSystem = {
       type: 'directory' as const,
       size: 0,
       modified: new Date().toISOString(),
-      path: `/var/www/html/wp.zyntr.com`
+      path: `/var/www/html/wp.zyntr.com`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: true,
+        owner: 'www-data',
+        group: 'www-data'
+      }
     },
     {
       name: 'index.html',
       type: 'file' as const,
       size: 1024,
       modified: new Date().toISOString(),
-      path: `/var/www/html/index.html`
+      path: `/var/www/html/index.html`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: false,
+        owner: 'www-data',
+        group: 'www-data'
+      }
     },
     {
       name: 'favicon.ico',
       type: 'file' as const,
       size: 4096,
       modified: new Date().toISOString(),
-      path: `/var/www/html/favicon.ico`
+      path: `/var/www/html/favicon.ico`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: false,
+        owner: 'www-data',
+        group: 'www-data'
+      }
     }
   ],
   '/var/www/html/wp.zyntr.com': [
@@ -50,42 +84,84 @@ let mockFileSystem = {
       type: 'directory' as const,
       size: 0,
       modified: new Date().toISOString(),
-      path: `/var/www/html/wp.zyntr.com/wp-admin`
+      path: `/var/www/html/wp.zyntr.com/wp-admin`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: true,
+        owner: 'www-data',
+        group: 'www-data'
+      }
     },
     {
       name: 'wp-content',
       type: 'directory' as const,
       size: 0,
       modified: new Date().toISOString(),
-      path: `/var/www/html/wp.zyntr.com/wp-content`
+      path: `/var/www/html/wp.zyntr.com/wp-content`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: true,
+        owner: 'www-data',
+        group: 'www-data'
+      }
     },
     {
       name: 'wp-includes',
       type: 'directory' as const,
       size: 0,
       modified: new Date().toISOString(),
-      path: `/var/www/html/wp.zyntr.com/wp-includes`
+      path: `/var/www/html/wp.zyntr.com/wp-includes`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: true,
+        owner: 'www-data',
+        group: 'www-data'
+      }
     },
     {
       name: 'index.php',
       type: 'file' as const,
       size: 418,
       modified: new Date().toISOString(),
-      path: `/var/www/html/wp.zyntr.com/index.php`
+      path: `/var/www/html/wp.zyntr.com/index.php`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: false,
+        owner: 'www-data',
+        group: 'www-data'
+      }
     },
     {
       name: 'wp-config.php',
       type: 'file' as const,
       size: 2853,
       modified: new Date().toISOString(),
-      path: `/var/www/html/wp.zyntr.com/wp-config.php`
+      path: `/var/www/html/wp.zyntr.com/wp-config.php`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: false,
+        owner: 'www-data',
+        group: 'www-data'
+      }
     },
     {
       name: '.htaccess',
       type: 'file' as const,
       size: 246,
       modified: new Date().toISOString(),
-      path: `/var/www/html/wp.zyntr.com/.htaccess`
+      path: `/var/www/html/wp.zyntr.com/.htaccess`,
+      permissions: {
+        read: true,
+        write: true,
+        execute: false,
+        owner: 'www-data',
+        group: 'www-data'
+      }
     }
   ],
 };
@@ -583,6 +659,161 @@ export const saveFile = async (ip: string, path: string, content: string, pemFil
     return Promise.resolve();
   } catch (error) {
     console.error('Error saving file:', error);
+    throw error;
+  }
+};
+
+// Update file permissions
+export const updatePermissions = async (
+  ip: string, 
+  path: string, 
+  permissions: FilePermissions, 
+  pemFile?: File
+): Promise<void> => {
+  try {
+    console.log(`Updating permissions for: ${path} on ${ip}`, permissions);
+    
+    // Simulated delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Get parent directory path and item name
+    const pathParts = path.split('/').filter(Boolean);
+    const itemName = pathParts.pop() || '';
+    const parentPath = '/' + pathParts.join('/');
+    
+    // Ensure the parent path exists in our mock system
+    if (!mockFileSystem[parentPath]) {
+      throw new Error('Parent directory not found');
+    }
+    
+    // Find the item to update permissions
+    const itemIndex = mockFileSystem[parentPath].findIndex(item => item.name === itemName);
+    
+    if (itemIndex < 0) {
+      throw new Error('Item not found');
+    }
+    
+    // Update the permissions
+    mockFileSystem[parentPath][itemIndex].permissions = permissions;
+    // Update modified date
+    mockFileSystem[parentPath][itemIndex].modified = new Date().toISOString();
+    
+    console.log('Permissions updated successfully');
+    return Promise.resolve();
+  } catch (error) {
+    console.error('Error updating permissions:', error);
+    throw error;
+  }
+};
+
+// Copy a file or folder
+export const copyItem = async (
+  ip: string,
+  sourcePath: string,
+  destinationPath: string,
+  pemFile?: File
+): Promise<void> => {
+  try {
+    console.log(`Copying: ${sourcePath} to ${destinationPath} on ${ip}`);
+    
+    // Simulated delay proportional to complexity
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Get source details
+    const sourcePathParts = sourcePath.split('/').filter(Boolean);
+    const sourceItemName = sourcePathParts.pop() || '';
+    const sourceParentPath = '/' + sourcePathParts.join('/');
+    
+    // Get destination details
+    const destPathParts = destinationPath.split('/').filter(Boolean);
+    const destItemName = destPathParts.pop() || '';
+    const destParentPath = '/' + destPathParts.join('/');
+    
+    // Ensure both paths exist
+    if (!mockFileSystem[sourceParentPath]) {
+      throw new Error('Source directory not found');
+    }
+    
+    if (!mockFileSystem[destParentPath]) {
+      mockFileSystem[destParentPath] = [];
+    }
+    
+    // Find the source item
+    const sourceItemIndex = mockFileSystem[sourceParentPath].findIndex(
+      item => item.name === sourceItemName
+    );
+    
+    if (sourceItemIndex < 0) {
+      throw new Error('Source item not found');
+    }
+    
+    const sourceItem = mockFileSystem[sourceParentPath][sourceItemIndex];
+    
+    // Check if destination already exists
+    const destExists = mockFileSystem[destParentPath].some(
+      item => item.name === destItemName
+    );
+    
+    if (destExists) {
+      throw new Error('Destination already exists');
+    }
+    
+    // Create a copy of the item at the destination
+    const newItem = {
+      ...sourceItem,
+      name: destItemName,
+      path: destinationPath,
+      modified: new Date().toISOString()
+    };
+    
+    mockFileSystem[destParentPath].push(newItem);
+    
+    // If it's a directory, recursively copy its contents
+    if (sourceItem.type === 'directory') {
+      // Create new directory in mock file system
+      mockFileSystem[destinationPath] = [];
+      
+      // If the source directory has contents, copy them
+      if (mockFileSystem[sourcePath]) {
+        mockFileSystem[destinationPath] = mockFileSystem[sourcePath].map(subItem => ({
+          ...subItem,
+          path: `${destinationPath}/${subItem.name}`,
+          modified: new Date().toISOString()
+        }));
+      }
+    } else if (sourceItem.type === 'file' && fileContentCache[sourcePath]) {
+      // Copy file content if it exists in cache
+      fileContentCache[destinationPath] = fileContentCache[sourcePath];
+    }
+    
+    console.log('Item copied successfully');
+    return Promise.resolve();
+  } catch (error) {
+    console.error('Error copying item:', error);
+    throw error;
+  }
+};
+
+// Move a file or folder
+export const moveItem = async (
+  ip: string,
+  sourcePath: string,
+  destinationPath: string,
+  pemFile?: File
+): Promise<void> => {
+  try {
+    console.log(`Moving: ${sourcePath} to ${destinationPath} on ${ip}`);
+    
+    // First copy the item to the destination
+    await copyItem(ip, sourcePath, destinationPath, pemFile);
+    
+    // Then delete the original
+    await deleteItem(ip, sourcePath, pemFile);
+    
+    console.log('Item moved successfully');
+    return Promise.resolve();
+  } catch (error) {
+    console.error('Error moving item:', error);
     throw error;
   }
 };

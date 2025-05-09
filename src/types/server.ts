@@ -12,10 +12,19 @@ export interface Site {
   ip: string;
 }
 
+export interface FilePermissions {
+  read: boolean;
+  write: boolean;
+  execute: boolean;
+  owner: string;
+  group: string;
+}
+
 export interface FileItem {
   name: string;
   type: 'file' | 'directory';
   size: number;
   modified: string;
   path: string;
+  permissions?: FilePermissions;
 }

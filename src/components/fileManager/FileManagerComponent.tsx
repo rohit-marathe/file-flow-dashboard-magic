@@ -7,7 +7,10 @@ import {
   FolderPlus,
   RefreshCw,
   ArrowLeft,
-  LogOut
+  LogOut,
+  Copy,
+  Move,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,6 +23,8 @@ import UploadFileModal from './modals/UploadFileModal';
 import EditFileModal from './modals/EditFileModal';
 import RenameModal from './modals/RenameModal';
 import DeleteConfirmModal from './modals/DeleteConfirmModal';
+import PermissionsModal from './modals/PermissionsModal';
+import CopyMoveModal from './modals/CopyMoveModal';
 import { toast } from 'sonner';
 
 interface FileManagerComponentProps {
@@ -39,6 +44,9 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
   const [isEditFileModalOpen, setIsEditFileModalOpen] = useState(false);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
+  const [isCopyMoveModalOpen, setIsCopyMoveModalOpen] = useState(false);
+  const [copyMoveMode, setCopyMoveMode] = useState<'copy' | 'move'>('copy');
 
   useEffect(() => {
     // Fetch files when the component mounts or currentPath changes
@@ -107,6 +115,17 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
   const handleEdit = (item: FileItem) => {
     setSelectedItem(item);
     setIsEditFileModalOpen(true);
+  };
+
+  const handlePermissions = (item: FileItem) => {
+    setSelectedItem(item);
+    setIsPermissionsModalOpen(true);
+  };
+
+  const handleCopyMove = (item: FileItem, mode: 'copy' | 'move') => {
+    setSelectedItem(item);
+    setCopyMoveMode(mode);
+    setIsCopyMoveModalOpen(true);
   };
 
   // This function will be called after successful operations to refresh the file list
@@ -192,6 +211,9 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
               onRename={handleRename}
               onDelete={handleDelete}
               onEdit={handleEdit}
+              onPermissions={handlePermissions}
+              onCopy={(item) => handleCopyMove(item, 'copy')}
+              onMove={(item) => handleCopyMove(item, 'move')}
             />
           </div>
         </Card>
@@ -244,6 +266,26 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
             ip={serverConnection.ip}
             pemFile={serverConnection.pemFile}
             onSuccess={handleOperationSuccess}
+          />
+
+          <PermissionsModal
+            isOpen={isPermissionsModalOpen}
+            onClose={() => setIsPermissionsModalOpen(false)}
+            item={selectedItem}
+            ip={serverConnection.ip}
+            pemFile={serverConnection.pemFile}
+            onSuccess={handleOperationSuccess}
+          />
+
+          <CopyMoveModal
+            isOpen={isCopyMoveModalOpen}
+            onClose={() => setIsCopyMoveModalOpen(false)}
+            item={selectedItem}
+            currentPath={currentPath}
+            ip={serverConnection.ip}
+            pemFile={serverConnection.pemFile}
+            onSuccess={handleOperationSuccess}
+            mode={copyMoveMode}
           />
         </>
       )}
