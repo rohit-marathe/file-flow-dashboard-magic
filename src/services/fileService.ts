@@ -28,7 +28,11 @@ const createFormData = (connection: Partial<ServerConnection>, additionalData: R
   if (connection.path) formData.append('path', connection.path);
   
   // Add PEM file if provided
-  if (connection.pemFile) formData.append('pemFile', connection.pemFile);
+  if (connection.pemFile && connection.pemFile instanceof File) {
+    formData.append('pemFile', connection.pemFile);
+  } else {
+    console.warn('PEM file is missing or not a File object');
+  }
   
   // Add any additional data
   Object.entries(additionalData).forEach(([key, value]) => {
@@ -49,7 +53,15 @@ export const listFiles = async (ip: string, path: string, pemFile?: File): Promi
   try {
     console.log("Fetching files from server:", ip, path);
     
+    if (!pemFile || !(pemFile instanceof File)) {
+      console.error('Invalid PEM file:', pemFile);
+      throw new Error('PEM file is required and must be a File object');
+    }
+    
     const formData = createFormData({ ip, path, pemFile });
+    
+    // Log formData for debugging
+    console.log('Sending FormData with keys:', [...formData.keys()]);
     
     const response = await fetch(`${API_BASE_URL}/list`, {
       method: 'POST',
@@ -59,19 +71,18 @@ export const listFiles = async (ip: string, path: string, pemFile?: File): Promi
     // Add detailed logging for debugging
     console.log('Response status:', response.status);
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Server error response:', errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        throw new Error(errorData.error || 'Failed to list files');
-      } catch (e) {
-        throw new Error(`Failed to list files: ${errorText || response.statusText}`);
-      }
-    }
-    
     const responseText = await response.text();
     console.log('Response text:', responseText);
+    
+    if (!response.ok) {
+      console.error('Server error response:', responseText);
+      try {
+        const errorData = JSON.parse(responseText);
+        throw new Error(errorData.error || 'Failed to list files');
+      } catch (e) {
+        throw new Error(`Failed to list files: ${responseText || response.statusText}`);
+      }
+    }
     
     if (!responseText) {
       throw new Error('Empty response from server');

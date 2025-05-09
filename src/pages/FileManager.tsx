@@ -17,14 +17,23 @@ const FileManager = () => {
     
     try {
       console.log("Attempting SSH connection with:", connectionDetails);
-      // Simulate SSH connection (in a real app this would be an actual SSH connection)
+      
+      // Validate PEM file
+      if (!connectionDetails.pemFile || !(connectionDetails.pemFile instanceof File)) {
+        throw new Error('PEM file is required. Please select a valid key file.');
+      }
+      
+      // In a real app, we would validate the connection with a test API call here
+      // For now we'll just simulate a delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
+      // Store the connection details
       setServerConnection(connectionDetails);
       toast.success("Successfully connected to server");
     } catch (error) {
       console.error("SSH connection failed:", error);
-      toast.error("Failed to connect. Please check your credentials and try again.");
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Connection failed: ${errorMessage}`);
     } finally {
       setIsConnecting(false);
     }

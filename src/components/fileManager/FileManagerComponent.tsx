@@ -10,10 +10,12 @@ import {
   LogOut,
   Copy,
   Move,
-  Lock
+  Lock,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FileItem, ServerConnection } from '@/types/server';
 import { listFiles } from '@/services/fileService';
 import Breadcrumbs from './Breadcrumbs';
@@ -37,6 +39,7 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FileItem | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   // Modal states
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
@@ -55,12 +58,21 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
 
   const fetchFiles = async () => {
     setLoading(true);
+    setError(null);
     try {
       console.log("Fetching files for:", serverConnection.ip, currentPath);
+      
+      // Validate PEM file
+      if (!serverConnection.pemFile || !(serverConnection.pemFile instanceof File)) {
+        throw new Error('PEM file is required. Please reconnect with a valid key file.');
+      }
+      
       const filesData = await listFiles(serverConnection.ip, currentPath, serverConnection.pemFile);
       setFiles(filesData);
     } catch (error) {
       console.error("Error fetching files:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setError(errorMessage);
       toast.error("Failed to fetch files. Please try again.");
     } finally {
       setLoading(false);
@@ -156,6 +168,15 @@ const FileManagerComponent = ({ serverConnection, onDisconnect }: FileManagerCom
             </Button>
           </div>
         </div>
+
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="ml-2">
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card className="p-4">
           <div className="flex flex-col space-y-4">
