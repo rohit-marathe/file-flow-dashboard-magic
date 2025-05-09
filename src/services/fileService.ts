@@ -1,7 +1,6 @@
-
 import { FileItem, Site, ServerConnection, FilePermissions, BackendResponse } from '@/types/server';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = '/api';  // Updated to use the proxy
 
 // Get list of sites/domains
 export const getSites = async (): Promise<Site[]> => {
