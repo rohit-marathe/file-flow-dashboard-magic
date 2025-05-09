@@ -28,3 +28,9 @@ export interface FileItem {
   path: string;
   permissions?: FilePermissions;
 }
+
+export interface BackendResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}

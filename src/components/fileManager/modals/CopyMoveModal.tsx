@@ -40,44 +40,78 @@ const CopyMoveModal = ({
   const [availablePaths, setAvailablePaths] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [customPath, setCustomPath] = useState("");
+  const [useCustomPath, setUseCustomPath] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      setDestinationPath(currentPath);
       fetchAvailablePaths();
     }
-  }, [isOpen]);
+  }, [isOpen, currentPath]);
 
   const fetchAvailablePaths = async () => {
     setIsLoading(true);
     try {
-      // For simplicity, we'll just show some common paths
-      // In a real implementation, this would fetch available directories from the server
-      setAvailablePaths([
+      // Get root directories
+      const rootPaths = [
         "/var/www/",
         "/var/www/html/",
-        "/var/www/html/wp.zyntr.com/",
-        "/var/www/cgi-bin/"
-      ]);
+        "/home/",
+        "/etc/",
+        currentPath
+      ];
+      
+      setAvailablePaths([...new Set(rootPaths)]);
+      
+      // If we have a PEM file, try to fetch actual directories
+      if (pemFile && ip) {
+        try {
+          const files = await listFiles(ip, "/var/www/", pemFile);
+          const directories = files
+            .filter(file => file.type === 'directory')
+            .map(dir => {
+              let path = dir.path;
+              if (!path.endsWith('/')) path += '/';
+              return path;
+            });
+          
+          // Combine with root paths and remove duplicates
+          setAvailablePaths([...new Set([...rootPaths, ...directories])]);
+        } catch (error) {
+          console.error("Error fetching directories:", error);
+          // Fallback to root paths if we can't fetch
+        }
+      }
     } catch (error) {
-      console.error("Error fetching paths:", error);
+      console.error("Error setting up paths:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSubmit = async () => {
-    if (!destinationPath) {
-      toast.error("Please select a destination path");
+    // Determine which path to use
+    const finalPath = useCustomPath ? customPath : destinationPath;
+    
+    if (!finalPath) {
+      toast.error("Please select or enter a destination path");
       return;
+    }
+
+    // Ensure path ends with a slash
+    let path = finalPath;
+    if (!path.endsWith('/')) {
+      path += '/';
     }
 
     setIsProcessing(true);
     try {
       if (mode === 'copy') {
-        await copyItem(ip, item.path, destinationPath + item.name, pemFile);
+        await copyItem(ip, item.path, path + item.name, pemFile);
         toast.success(`${item.type === 'directory' ? 'Folder' : 'File'} copied successfully`);
       } else {
-        await moveItem(ip, item.path, destinationPath + item.name, pemFile);
+        await moveItem(ip, item.path, path + item.name, pemFile);
         toast.success(`${item.type === 'directory' ? 'Folder' : 'File'} moved successfully`);
       }
       onSuccess();
@@ -103,24 +137,52 @@ const CopyMoveModal = ({
             <Label>Source</Label>
             <Input value={item?.path} readOnly className="mt-1" />
           </div>
-          <div>
-            <Label htmlFor="destinationPath">Destination</Label>
-            <Select
-              value={destinationPath}
-              onValueChange={setDestinationPath}
-              disabled={isLoading}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select destination path" />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePaths.map((path) => (
-                  <SelectItem key={path} value={path}>
-                    {path}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          
+          <div className="space-y-2">
+            <Label htmlFor="destinationMethod">Destination</Label>
+            <div className="flex items-center space-x-2 mb-2">
+              <Button 
+                type="button"
+                variant={!useCustomPath ? "default" : "outline"}
+                size="sm"
+                onClick={() => setUseCustomPath(false)}
+              >
+                Select Path
+              </Button>
+              <Button 
+                type="button"
+                variant={useCustomPath ? "default" : "outline"}
+                size="sm"
+                onClick={() => setUseCustomPath(true)}
+              >
+                Custom Path
+              </Button>
+            </div>
+            
+            {useCustomPath ? (
+              <Input
+                placeholder="Enter destination path (e.g. /var/www/html/)"
+                value={customPath}
+                onChange={(e) => setCustomPath(e.target.value)}
+              />
+            ) : (
+              <Select
+                value={destinationPath}
+                onValueChange={setDestinationPath}
+                disabled={isLoading}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select destination path" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availablePaths.map((path) => (
+                    <SelectItem key={path} value={path}>
+                      {path}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
         <DialogFooter>
